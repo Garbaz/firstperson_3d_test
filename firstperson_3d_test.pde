@@ -6,8 +6,8 @@ final float PLAYER_HEIGHT = 100;
 final float PLAYER_GROUND_MAX_SPEED = 250;
 final float PLAYER_GROUND_ACCELERATION = 3000;
 final float PLAYER_GROUND_DECELERATE = 1500;
-final float PLAYER_STRAFE_MAX_SPEED = 30;
-final float PLAYER_AIR_ACCELERATION = 1000;
+final float PLAYER_STRAFE_MAX_SPEED = 100;
+final float PLAYER_AIR_ACCELERATION = 2000;
 final float JUMP_SPEED = 300;
 final float GRAVITY = 490;
 
@@ -25,7 +25,7 @@ float view_angle_vertically = 0;
 
 float view_mouse_sensitivity = 0.0015;
 
-final float FIELD_OF_VIEW = radians(85);
+final float FIELD_OF_VIEW = radians(68);
 final float DEFAULT_FIELD_OF_VIEW = radians(60);
 final float DRAW_DISTANCE = 10000;
 final float CLOSE_CLIPPING_DISTANCE = 10;
@@ -36,6 +36,7 @@ void setup() {
   fullScreen(P3D);
   noCursor();
 
+  frameRate(100);
   try {
     robby = new Robot();
   }
@@ -68,14 +69,16 @@ void draw() {
     view_angle_horizontally %= TWO_PI;
     view_angle_vertically = constrain(view_angle_vertically, radians(-89), radians(89));
   }
-  PVector forward_dir, right_dir, camera_dir;
+
+  PVector forward_dir, right_dir, camera_dir, camera_pos;
 
 
   forward_dir = VEC(sin(view_angle_horizontally), 0, cos(view_angle_horizontally));
   right_dir = VEC(forward_dir.z, 0, -forward_dir.x);
 
   camera_dir = VEC(cos(view_angle_vertically) * forward_dir.x, sin(view_angle_vertically), cos(view_angle_vertically) * forward_dir.z);
-  camera(player_pos.x, player_pos.y+PLAYER_HEIGHT, player_pos.z, player_pos.x+camera_dir.x, player_pos.y+camera_dir.y+PLAYER_HEIGHT, player_pos.z+camera_dir.z, 0, -1, 0);
+  camera_pos = VEC(player_pos.x, player_pos.y+PLAYER_HEIGHT, player_pos.z);
+  camera(camera_pos.x, camera_pos.y, camera_pos.z, player_pos.x+camera_dir.x, player_pos.y+camera_dir.y+PLAYER_HEIGHT, player_pos.z+camera_dir.z, 0, -1, 0);
 
   float player_vel_forward = player_vel.dot(forward_dir);
   float player_vel_right = player_vel.dot(right_dir);
@@ -114,23 +117,51 @@ void draw() {
   } else {
     player_on_ground = false;
   }
-  
+
   if (key_jump && player_on_ground) {
     player_vel.y = JUMP_SPEED;
     player_on_ground = false;
   }
 
-  fill(#A71E1E);
-  boxAtFloor(0, 400, 70, 50, 70);
-  fill(#78EEFC);
-  boxAtFloor(400, 0, 50, 100, 220);
-  fill(#53AD47);
-  boxAtFloor(-400, 0, 100, 150, 100);
-  fill(#FFA805);
-  boxAtFloor(0, -400, 100, 200, 100);
+  PVector bp = VEC(10, 50, 100);
+  PVector p1 = VEC(0, 150, 30);
+  PVector p2 = VEC(0, 120, -70);
+
+  PVector bl = camera_pos;
+  PVector l = PVector.mult(camera_dir, 10000);
+
+  PVector inters = intersect_line_triangle(bl, l, bp, p1, p2);
+  if (inters != null) {
+    boxAt(inters.x, inters.y, inters.z, 5, 5, 5);
+    fill(#ff0000);
+  } else {
+    fill(#ffffff);
+  }
+  beginShape(TRIANGLES);
+  vertex(bp.x, bp.y, bp.z);
+  vertex(bp.x+p1.x, bp.y+p1.y, bp.z+p1.z);
+  vertex(bp.x+p2.x, bp.y+p2.y, bp.z+p2.z);
+  endShape();
+
+
+  randomSeed(1234);
+  for (int x = -4500; x <= 4500; x+=1000) {
+    for (int z = -4500; z <= 4500; z+=1000) {
+      fill(random(0, 255), random(0, 255), random(0, 255));
+      boxAtFloor(x+int(random(-50, 50)), z+int(random(-50, 50)), 25, 250, 25);
+    }
+  }
+  //fill(#A71E1E);
+  //boxAtFloor(0, 400, 70, 50, 70);
+  //fill(#78EEFC);
+  //boxAtFloor(400, 0, 50, 100, 220);
+  //fill(#53AD47);
+  //boxAtFloor(-400, 0, 100, 150, 100);
+  //fill(#FFA805);
+  //boxAtFloor(0, -400, 100, 200, 100);
 
   fill(#ffffff);
-  boxAtFloor(0, 0, 1000, 700, 1000);
+  boxAtFloor(0, 0, 10000, 700, 10000);
 
   hudBegin();
   pushStyle();
@@ -203,7 +234,7 @@ void keyPressed(KeyEvent e) {
     } else if (e_key == ' ') {
       key_jump = true;
     }
-    update_player_vel();
+    update_player_move();
   }
 }
 void keyReleased() {
@@ -219,7 +250,13 @@ void keyReleased() {
     key_jump = false;
   }
 
-  update_player_vel();
+  update_player_move();
+}
+
+
+void update_player_move() {
+  input_move_forward = int(key_up)-int(key_down);
+  input_move_right = int(key_right)-int(key_left);
 }
 
 void mousePressed() {
@@ -233,9 +270,4 @@ float deltatime() {
   int deltaTime = millis() - lastTime;
   lastTime += deltaTime;
   return deltaTime/1000.0;
-}
-
-void update_player_vel() {
-  input_move_forward = int(key_up)-int(key_down);
-  input_move_right = int(key_right)-int(key_left);
 }
