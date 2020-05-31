@@ -5,7 +5,7 @@ Robot robby;
 final float PLAYER_HEIGHT = 100;
 final float PLAYER_GROUND_MAX_SPEED = 250;
 final float PLAYER_GROUND_ACCELERATION = 3000;
-final float PLAYER_GROUND_DECELERATE = 1500;
+final float PLAYER_GROUND_DECELERATION = 1500;
 final float PLAYER_STRAFE_MAX_SPEED = 100;
 final float PLAYER_AIR_ACCELERATION = 2000;
 final float JUMP_SPEED = 300;
@@ -25,11 +25,13 @@ float view_angle_vertically = 0;
 
 float view_mouse_sensitivity = 0.0015;
 
-final float FIELD_OF_VIEW = radians(68);
+final float FIELD_OF_VIEW = radians(78);
 final float DEFAULT_FIELD_OF_VIEW = radians(60);
 final float DRAW_DISTANCE = 10000;
 final float CLOSE_CLIPPING_DISTANCE = 10;
 
+//PShape skybox_sphere;
+PShader skybox_shader;
 
 void setup() {
   //size(640, 480, P3D);
@@ -50,6 +52,11 @@ void setup() {
   textAlign(LEFT, TOP);
 
   perspective(FIELD_OF_VIEW, float(width)/float(height), CLOSE_CLIPPING_DISTANCE, DRAW_DISTANCE);
+  //ortho();
+  //skybox_sphere = loadShape("models/skybox_sphere.obj");
+  skybox_shader = loadShader("shaders/skybox.frag","shaders/skybox.vert");
+  skybox_shader.set("noise_tex", loadImage("textures/noise.png"));
+  skybox_shader.set("test_tex", loadImage("textures/test.png"));
 }
 
 void draw() {
@@ -78,14 +85,14 @@ void draw() {
 
   camera_dir = VEC(cos(view_angle_vertically) * forward_dir.x, sin(view_angle_vertically), cos(view_angle_vertically) * forward_dir.z);
   camera_pos = VEC(player_pos.x, player_pos.y+PLAYER_HEIGHT, player_pos.z);
-  camera(camera_pos.x, camera_pos.y, camera_pos.z, player_pos.x+camera_dir.x, player_pos.y+camera_dir.y+PLAYER_HEIGHT, player_pos.z+camera_dir.z, 0, -1, 0);
+  camera(camera_pos.x, camera_pos.y, camera_pos.z, player_pos.x+camera_dir.x, camera_pos.y+camera_dir.y, camera_pos.z+camera_dir.z, 0, -1, 0);
 
   float player_vel_forward = player_vel.dot(forward_dir);
   float player_vel_right = player_vel.dot(right_dir);
 
   if (player_on_ground) {
-    if (player_vel.mag() > dt*PLAYER_GROUND_DECELERATE) {
-      player_vel.setMag(player_vel.mag() - dt*PLAYER_GROUND_DECELERATE);
+    if (player_vel.mag() > dt*PLAYER_GROUND_DECELERATION) {
+      player_vel.setMag(player_vel.mag() - dt*PLAYER_GROUND_DECELERATION);
     } else {
       player_vel.set(0, 0, 0);
     }
@@ -161,7 +168,21 @@ void draw() {
   //boxAtFloor(0, -400, 100, 200, 100);
 
   fill(#ffffff);
-  boxAtFloor(0, 0, 10000, 700, 10000);
+  //boxAtFloor(0, 0, 10000, 700, 10000);
+  //boxAtFloor(0, 0, 10000, -10, 10000);
+  
+  push();
+  translate(player_pos.x, 0, player_pos.z);
+  skybox_shader.set("time", millis()/1000.0);
+  fill(#0E0D6C);
+  shader(skybox_shader);
+  noStroke();
+  sphere(0.9*DRAW_DISTANCE);
+  //box(0.9*DRAW_DISTANCE);
+  //scale(0.9 * DRAW_DISTANCE);
+  //shape(skybox_sphere);
+  resetShader();
+  pop();
 
   hudBegin();
   pushStyle();
